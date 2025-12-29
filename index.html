@@ -287,9 +287,9 @@ let animationId = null; // To manage game loop
 let width, height;
 
 // Physics Constants
-const GRAVITY = 0.5; // Downward force
-const LIFT = -0.8;   // Upward force when holding
-const MAX_VELOCITY = 10;
+const GRAVITY = 0.4; // Downward force (Slightly reduced from 0.5)
+const LIFT = -0.4;   // Upward force when holding (Reduced from -0.8 to make it less sensitive)
+const MAX_VELOCITY = 7; // Cap max velocity to prevent uncontrollability (Reduced from 10)
 
 // Player (The Thread Head)
 const player = {
