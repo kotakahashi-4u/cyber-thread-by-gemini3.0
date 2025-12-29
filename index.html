@@ -282,8 +282,9 @@ const restartBtn = document.getElementById('restartBtn');
 let gameState = 'START'; // START, PLAYING, GAMEOVER
 let passedCount = 0; // "Threads passed" counter
 let frames = 0;
-const GAME_SPEED = 3.0; // CONSTANT SPEED - No acceleration
-let animationId = null; // To manage game loop
+const GAME_SPEED = 3.0; // Base Speed for 60FPS
+let animationId = null; 
+let lastTime = 0; // For Delta Time
 let width, height;
 
 // Physics Constants
@@ -329,7 +330,6 @@ resize();
 
 // Input Handlers
 function handleInputStart(e) {
-    // CRITICAL FIX: Allow buttons to be clicked!
     if (e.target.tagName === 'BUTTON' || e.target.closest('button')) {
         return;
     }
@@ -358,9 +358,9 @@ function resetGame() {
     player.y = height / 2;
     player.velocity = 0;
     player.trail = [];
-    isHolding = false; // Reset holding state
+    isHolding = false; 
 
-    // Pre-fill trail to avoid popping
+    // Pre-fill trail
     for(let i=0; i<player.trailLength; i++) {
         player.trail.push({x: player.x - i*5, y: player.y});
     }
@@ -370,6 +370,7 @@ function resetGame() {
     passedCount = 0;
     currentGapSize = initialGapSize;
     frames = 0;
+    lastTime = 0; // Reset time for Delta Time
     
     // Create first obstacle far away
     addObstacle(width + 200);
@@ -388,23 +389,22 @@ function startGame() {
     gameOverScreen.classList.add('hidden');
     hud.classList.remove('hidden');
     resetGame();
-    animate();
+    // Start loop via requestAnimationFrame to get valid initial timestamp
+    animationId = requestAnimationFrame(animate);
 }
 
 function gameOver() {
-    if (gameState === 'GAMEOVER') return; // Prevent double trigger
+    if (gameState === 'GAMEOVER') return; 
     
     AudioSys.playCrash();
     gameState = 'GAMEOVER';
     finalScoreDisplay.textContent = passedCount;
     hud.classList.add('hidden');
     gameOverScreen.classList.remove('hidden');
-    // Create explosion at player position
     createExplosion(player.x, player.y, 50, '#f0f');
 }
 
 function addObstacle(xOffset) {
-    // Determine random gap position
     const padding = 100;
     const maxGapTop = height - currentGapSize - 50;
     const minGapTop = padding;
@@ -433,28 +433,35 @@ function createExplosion(x, y, count, color) {
     }
 }
 
-function update() {
+function update(timeScale) {
     if (gameState !== 'PLAYING') return;
 
-    // --- Constant Speed Logic ---
-    // No acceleration, no boost. Just constant speed.
-    
-    // Decrease gap size based on passed count
-    currentGapSize = Math.max(minGapSize, initialGapSize - (passedCount * 2));
+    // --- Difficulty Scaling ---
+    // Decrease gap size by 1% of initial size every 5 threads passed
+    // Formula: Initial - (5% count) * (1% of Initial)
+    const reduction = Math.floor(passedCount / 5) * (initialGapSize * 0.01);
+    currentGapSize = Math.max(minGapSize, initialGapSize - reduction);
 
-    // Player Physics
+    // --- Physics with Delta Time ---
+    const gravityScaled = GRAVITY * timeScale;
+    const liftScaled = LIFT * timeScale;
+
     if (isHolding) {
-        player.velocity += LIFT;
+        player.velocity += liftScaled;
     } else {
-        player.velocity += GRAVITY;
+        player.velocity += gravityScaled;
     }
 
-    // Dampening / Terminal Velocity
-    player.velocity *= 0.96; 
+    // Dampening (Approximation for frame independence)
+    // 0.96 at 1.0 scale -> loss of 0.04
+    player.velocity *= (1 - 0.04 * timeScale);
+
+    // Cap velocity (Absolute limits)
     if (player.velocity > MAX_VELOCITY) player.velocity = MAX_VELOCITY;
     if (player.velocity < -MAX_VELOCITY) player.velocity = -MAX_VELOCITY;
 
-    player.y += player.velocity;
+    // Apply Velocity
+    player.y += player.velocity * timeScale;
 
     // Ceiling/Floor collision
     if (player.y < 0 || player.y > height) {
@@ -462,9 +469,12 @@ function update() {
         return;
     }
 
+    // --- Movement with Delta Time ---
+    const moveAmount = GAME_SPEED * timeScale;
+
     // Trail Logic
     for (let t of player.trail) {
-        t.x -= GAME_SPEED;
+        t.x -= moveAmount;
     }
     player.trail.unshift({x: player.x, y: player.y});
     if (player.trail.length > player.trailLength) {
@@ -481,17 +491,15 @@ function update() {
 
     for (let i = obstacles.length - 1; i >= 0; i--) {
         let obs = obstacles[i];
-        obs.x -= GAME_SPEED;
+        obs.x -= moveAmount;
 
         // Collision Detection
         if (player.x + player.radius > obs.x && player.x - player.radius < obs.x + obs.width) {
             
-            // 1. Check Safe Zone (The Hole)
             const inHole = (player.y - player.radius > obs.gapTop) && 
                            (player.y + player.radius < obs.gapTop + obs.gapHeight);
             
             if (!inHole) {
-                // Not in hole, check collision with needle structure
                 const hitBottom = (player.y + player.radius > obs.gapTop + obs.gapHeight);
                 const hitTopTip = (player.y - player.radius < obs.gapTop) && 
                                   (player.y + player.radius > obs.gapTop - obs.tipHeight);
@@ -503,14 +511,12 @@ function update() {
             }
         }
 
-        // Scoring (Counting Threads)
+        // Scoring
         if (!obs.passed && player.x > obs.x + obs.width) {
             obs.passed = true;
             
-            // Count only if passed through the hole
             if (player.y > obs.gapTop && player.y < obs.gapTop + obs.gapHeight) {
                 passedCount++;
-                // Small particle burst for success
                 createExplosion(obs.x + obs.width, player.y, 5, '#0ff');
                 AudioSys.playScore();
             }
@@ -525,9 +531,9 @@ function update() {
     // Update Particles
     for (let i = particles.length - 1; i >= 0; i--) {
         let p = particles[i];
-        p.x += p.vx;
-        p.y += p.vy;
-        p.life -= 0.02;
+        p.x += p.vx * timeScale;
+        p.y += p.vy * timeScale;
+        p.life -= 0.02 * timeScale;
         if (p.life <= 0) particles.splice(i, 1);
     }
     
@@ -693,7 +699,8 @@ function drawGrid() {
     ctx.lineWidth = 1;
     
     const gridSize = 50;
-    // Use currentSpeed for grid movement too
+    // Use frames for simpler grid animation (visual only), or convert to time based if needed.
+    // For visual consistency, let's keep using frames but maybe slower
     const xOffset = (frames * GAME_SPEED) % gridSize;
 
     // Vertical lines
@@ -723,11 +730,23 @@ function drawGrid() {
     ctx.restore();
 }
 
-function animate() {
-    frames++;
-    update();
+function animate(timestamp) {
+    if (!lastTime) lastTime = timestamp;
+    const deltaTime = timestamp - lastTime;
+    lastTime = timestamp;
+
+    // Normalize to 60 FPS (approx 16.67ms per frame)
+    // If running at 120fps, deltaTime is ~8.3ms, so scale is 0.5
+    // If running at 60fps, deltaTime is ~16.7ms, so scale is 1.0
+    // Cap delta time to prevent huge jumps (e.g. switching tabs)
+    const safeDelta = Math.min(deltaTime, 100);
+    const timeScale = safeDelta / 16.67;
+
+    frames++; // Visual frame counter
+    update(timeScale);
     draw();
-    if (gameState === 'PLAYING' || gameState === 'GAMEOVER' && particles.length > 0) {
+    
+    if (gameState === 'PLAYING' || gameState === 'GAMEOVER') {
         animationId = requestAnimationFrame(animate);
     }
 }
