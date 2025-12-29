@@ -180,7 +180,7 @@
 
     <!-- HUD -->
     <div id="hud" class="hud hidden">
-        SCORE: <span id="scoreDisplay" class="score-val">0</span><br>
+        THREADS: <span id="scoreDisplay" class="score-val">0</span><br>
         <span style="font-size: 14px; color: #888;">GAP SIZE: <span id="difficultyDisplay">100%</span></span>
     </div>
 
@@ -200,7 +200,7 @@
     <div id="gameOverScreen" class="ui-layer hidden">
         <h2 class="text-6xl mb-4 font-black glitch" data-text="CRITICAL ERROR" style="color:#f0f;">CRITICAL ERROR</h2>
         <p class="text-2xl mb-2">SYSTEM HALTED</p>
-        <p class="text-xl mb-8">FINAL SCORE: <span id="finalScore" class="text-4xl text-yellow-400 font-bold">0</span></p>
+        <p class="text-xl mb-8">PASSED THREADS: <span id="finalScore" class="text-4xl text-yellow-400 font-bold">0</span></p>
         <button id="restartBtn" class="btn">REBOOT SYSTEM</button>
     </div>
 
@@ -280,16 +280,16 @@ const restartBtn = document.getElementById('restartBtn');
 
 // Game State
 let gameState = 'START'; // START, PLAYING, GAMEOVER
-let score = 0;
+let passedCount = 0; // "Threads passed" counter
 let frames = 0;
-let gameSpeed = 3;
+const GAME_SPEED = 3.0; // CONSTANT SPEED - No acceleration
 let animationId = null; // To manage game loop
 let width, height;
 
 // Physics Constants
-const GRAVITY = 0.4; // Downward force (Slightly reduced from 0.5)
-const LIFT = -0.4;   // Upward force when holding (Reduced from -0.8 to make it less sensitive)
-const MAX_VELOCITY = 7; // Cap max velocity to prevent uncontrollability (Reduced from 10)
+const GRAVITY = 0.4; // Downward force
+const LIFT = -0.4;   // Upward force when holding
+const MAX_VELOCITY = 7; // Cap max velocity
 
 // Player (The Thread Head)
 const player = {
@@ -304,8 +304,8 @@ const player = {
 
 // Obstacles (Needles)
 let obstacles = [];
-const NEEDLE_BODY_WIDTH = 30; // The bulge width (narrowed from 40)
-const NEEDLE_SHAFT_WIDTH = 8; // Narrowed from 12
+const NEEDLE_BODY_WIDTH = 30; // The bulge width
+const NEEDLE_SHAFT_WIDTH = 8; // Narrowed
 const OBSTACLE_SPACING = 300; // Distance between walls
 let initialGapSize = 250;
 let minGapSize = 60; 
@@ -330,7 +330,6 @@ resize();
 // Input Handlers
 function handleInputStart(e) {
     // CRITICAL FIX: Allow buttons to be clicked!
-    // If we preventDefault on buttons, the click event never fires on mobile.
     if (e.target.tagName === 'BUTTON' || e.target.closest('button')) {
         return;
     }
@@ -340,7 +339,6 @@ function handleInputStart(e) {
 }
 
 function handleInputEnd(e) {
-    // CRITICAL FIX: Also check button on touchend to prevent blocking click events
     if (e.target.tagName === 'BUTTON' || e.target.closest('button')) {
         return;
     }
@@ -369,8 +367,7 @@ function resetGame() {
     
     obstacles = [];
     particles = [];
-    score = 0;
-    gameSpeed = 2.8; // Reduced speed (was 4) ~30% slower
+    passedCount = 0;
     currentGapSize = initialGapSize;
     frames = 0;
     
@@ -382,7 +379,6 @@ function startGame() {
     AudioSys.init();
     AudioSys.playStart();
     
-    // Cancel any existing loop to prevent speed doubling bug
     if (animationId) {
         cancelAnimationFrame(animationId);
     }
@@ -400,7 +396,7 @@ function gameOver() {
     
     AudioSys.playCrash();
     gameState = 'GAMEOVER';
-    finalScoreDisplay.textContent = Math.floor(score);
+    finalScoreDisplay.textContent = passedCount;
     hud.classList.add('hidden');
     gameOverScreen.classList.remove('hidden');
     // Create explosion at player position
@@ -409,9 +405,8 @@ function gameOver() {
 
 function addObstacle(xOffset) {
     // Determine random gap position
-    // Keep gap within screen bounds with some padding
-    const padding = 100; // Keep needle tip on screen mostly
-    const maxGapTop = height - currentGapSize - 50; // Ensure bottom shaft exists
+    const padding = 100;
+    const maxGapTop = height - currentGapSize - 50;
     const minGapTop = padding;
     const gapTop = Math.random() * (maxGapTop - minGapTop) + minGapTop;
     
@@ -421,7 +416,7 @@ function addObstacle(xOffset) {
         gapTop: gapTop,
         gapHeight: currentGapSize,
         passed: false,
-        tipHeight: 15 // REDUCED from 50: Make the tip much smaller/subtle
+        tipHeight: 15
     });
 }
 
@@ -441,10 +436,11 @@ function createExplosion(x, y, count, color) {
 function update() {
     if (gameState !== 'PLAYING') return;
 
-    // Difficulty scaling
-    gameSpeed += 0.001; // Slowly increase speed
-    // Decrease gap size based on score, but clamp to min
-    currentGapSize = Math.max(minGapSize, initialGapSize - (score * 0.5));
+    // --- Constant Speed Logic ---
+    // No acceleration, no boost. Just constant speed.
+    
+    // Decrease gap size based on passed count
+    currentGapSize = Math.max(minGapSize, initialGapSize - (passedCount * 2));
 
     // Player Physics
     if (isHolding) {
@@ -454,7 +450,7 @@ function update() {
     }
 
     // Dampening / Terminal Velocity
-    player.velocity *= 0.96; // Air resistance
+    player.velocity *= 0.96; 
     if (player.velocity > MAX_VELOCITY) player.velocity = MAX_VELOCITY;
     if (player.velocity < -MAX_VELOCITY) player.velocity = -MAX_VELOCITY;
 
@@ -468,7 +464,7 @@ function update() {
 
     // Trail Logic
     for (let t of player.trail) {
-        t.x -= gameSpeed;
+        t.x -= GAME_SPEED;
     }
     player.trail.unshift({x: player.x, y: player.y});
     if (player.trail.length > player.trailLength) {
@@ -485,12 +481,9 @@ function update() {
 
     for (let i = obstacles.length - 1; i >= 0; i--) {
         let obs = obstacles[i];
-        obs.x -= gameSpeed;
+        obs.x -= GAME_SPEED;
 
         // Collision Detection
-        // Determine collision box for the "Needle" (Top Tip + Bulge + Bottom Shaft)
-        
-        // Check X range overlap
         if (player.x + player.radius > obs.x && player.x - player.radius < obs.x + obs.width) {
             
             // 1. Check Safe Zone (The Hole)
@@ -498,17 +491,11 @@ function update() {
                            (player.y + player.radius < obs.gapTop + obs.gapHeight);
             
             if (!inHole) {
-                // Not in hole, so check if we hit the needle structure
-                
-                // Bottom Structure: From (gapTop + gapHeight) downwards
+                // Not in hole, check collision with needle structure
                 const hitBottom = (player.y + player.radius > obs.gapTop + obs.gapHeight);
-                
-                // Top Structure (Tip): From (gapTop) upwards to (gapTop - tipHeight)
                 const hitTopTip = (player.y - player.radius < obs.gapTop) && 
                                   (player.y + player.radius > obs.gapTop - obs.tipHeight);
 
-                // If hit bottom or hit the tip, die.
-                // Note: If player is ABOVE the tip (y < gapTop - tipHeight), they are safe (flew over).
                 if (hitBottom || hitTopTip) {
                     gameOver();
                     return;
@@ -516,14 +503,13 @@ function update() {
             }
         }
 
-        // Scoring (Passing the right edge of obstacle)
+        // Scoring (Counting Threads)
         if (!obs.passed && player.x > obs.x + obs.width) {
             obs.passed = true;
             
-            // 修正: 穴を通った場合のみスコア加算
-            // プレイヤーのY座標が穴の範囲内にあるかチェック
+            // Count only if passed through the hole
             if (player.y > obs.gapTop && player.y < obs.gapTop + obs.gapHeight) {
-                score += 10;
+                passedCount++;
                 // Small particle burst for success
                 createExplosion(obs.x + obs.width, player.y, 5, '#0ff');
                 AudioSys.playScore();
@@ -545,11 +531,8 @@ function update() {
         if (p.life <= 0) particles.splice(i, 1);
     }
     
-    // Add time score
-    score += 0.05;
-    
     // Update HUD
-    scoreDisplay.innerText = Math.floor(score);
+    scoreDisplay.innerText = passedCount;
     let difficultyPercent = Math.max(0, Math.floor(((currentGapSize - minGapSize) / (initialGapSize - minGapSize)) * 100));
     difficultyDisplay.innerText = `HOLE SIZE: ${difficultyPercent}%`;
 }
@@ -642,14 +625,11 @@ function draw() {
         ctx.lineWidth = 2;
         ctx.globalAlpha = 0.8;
         
-        // Stroke the main needle shape
-        ctx.stroke(new Path2D(ctx)); // Re-stroke the last path (Needle body)? No, need to redraw path or store it.
         // Let's just stroke the outline of the hole for effect
         ctx.beginPath();
         ctx.roundRect(holeX, holeY, holeWidth, holeHeight, holeWidth/2);
         ctx.stroke();
         
-        // Optional: Inner glow for the hole to make it look like "energy field" or just empty space
         ctx.restore();
 
     });
@@ -713,7 +693,8 @@ function drawGrid() {
     ctx.lineWidth = 1;
     
     const gridSize = 50;
-    const xOffset = (frames * gameSpeed) % gridSize;
+    // Use currentSpeed for grid movement too
+    const xOffset = (frames * GAME_SPEED) % gridSize;
 
     // Vertical lines
     for (let x = -xOffset; x < width; x += gridSize) {
