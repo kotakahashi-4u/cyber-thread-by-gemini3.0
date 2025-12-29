@@ -3,762 +3,1019 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>CYBER THREAD</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>NEON HYPER HOCKEY 3D - v7.1 (Mobile Sensitivity Fix)</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
-
-        body {
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-            background-color: #050505;
-            font-family: 'Orbitron', sans-serif;
-            touch-action: none; /* Prevent pull-to-refresh on mobile */
-        }
-
-        #gameCanvas {
-            display: block;
-            width: 100%;
-            height: 100vh;
-        }
-
-        /* UI Overlay */
-        .ui-layer {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+        body { margin: 0; overflow: hidden; background-color: #020202; font-family: 'Segoe UI', sans-serif; user-select: none; touch-action: none; }
+        canvas { display: block; }
+        
+        /* --- UI Layer (HUD Style) --- */
+        #ui-layer {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
             pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            z-index: 10;
+        }
+
+        /* Top HUD Bar */
+        .hud-top {
+            width: 100%;
+            padding: 20px 40px;
+            box-sizing: border-box;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 100%);
+        }
+
+        /* Score Display */
+        .score-container {
+            display: flex;
+            gap: 40px;
+            align-items: center;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        
+        .score-box {
+            font-size: 60px;
+            font-weight: 900;
+            width: 80px;
+            text-align: center;
+            position: relative;
+        }
+        
+        .p-score { 
+            color: #00ffff; 
+            text-shadow: 0 0 20px #00ffff, 0 0 40px #00ffff;
+        }
+        .e-score { 
+            color: #ff0055; 
+            text-shadow: 0 0 20px #ff0055, 0 0 40px #ff0055; 
+        }
+        
+        .score-divider {
+            color: #fff;
+            font-size: 40px;
+            opacity: 0.5;
+        }
+
+        /* Modern Pause Button */
+        .pause-btn-container {
+            pointer-events: auto;
+            cursor: pointer;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(255,255,255,0.3);
+            background: rgba(0,0,0,0.4);
+            backdrop-filter: blur(5px);
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            position: relative;
+            z-index: 20;
+        }
+
+        .pause-btn-container:hover {
+            border-color: #00ffff;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
+            background: rgba(0, 255, 255, 0.1);
+        }
+
+        .pause-icon {
+            width: 18px;
+            height: 20px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .pause-bar {
+            width: 5px;
+            height: 100%;
+            background-color: #fff;
+            border-radius: 2px;
+            box-shadow: 0 0 5px rgba(255,255,255,0.8);
+        }
+
+        /* Pause Menu Overlay */
+        #pause-menu {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(15px);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 50;
+            pointer-events: auto;
+        }
+        
+        .pause-title {
+            color: #fff; 
+            font-size: 40px; 
+            margin-bottom: 50px; 
+            letter-spacing: 15px;
+            text-shadow: 0 0 10px #fff;
+            border-bottom: 1px solid #555;
+            padding-bottom: 10px;
+        }
+
+        /* Start / Menu Screen */
+        #menu-screen {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            width: 100%; height: 100%;
+            background: radial-gradient(circle at center, #1a1a1a 0%, #000000 100%);
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            text-align: center;
-            color: #0ff;
-            text-shadow: 0 0 10px #0ff, 0 0 20px #00f;
-        }
-
-        .hud {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            font-size: 24px;
-            font-weight: bold;
-            text-align: left;
-            pointer-events: none;
-            z-index: 10;
-        }
-
-        .score-val {
-            font-size: 32px;
-            color: #f0f;
-            text-shadow: 0 0 10px #f0f;
-        }
-
-        /* Buttons */
-        .btn {
-            pointer-events: auto;
-            background: rgba(0, 255, 255, 0.1);
-            border: 2px solid #0ff;
-            color: #0ff;
-            padding: 15px 40px;
-            font-size: 24px;
-            font-family: 'Orbitron', sans-serif;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
-            margin-top: 20px;
-            border-radius: 4px;
-        }
-
-        .btn:hover {
-            background: #0ff;
-            color: #000;
-            box-shadow: 0 0 30px #0ff;
-        }
-
-        .btn:active {
-            transform: scale(0.95);
-        }
-
-        /* CRT Scanline Effect */
-        .scanlines {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: linear-gradient(
-                to bottom,
-                rgba(255,255,255,0),
-                rgba(255,255,255,0) 50%,
-                rgba(0,0,0,0.2) 50%,
-                rgba(0,0,0,0.2)
-            );
-            background-size: 100% 4px;
-            pointer-events: none;
             z-index: 100;
-            animation: scanlineMove 10s linear infinite;
+            pointer-events: auto;
+            transition: opacity 0.5s;
         }
         
-        /* Slight vignette */
-        .vignette {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: radial-gradient(circle, rgba(0,0,0,0) 60%, rgba(0,0,0,0.8) 100%);
-            pointer-events: none;
-            z-index: 99;
+        h1 {
+            color: #fff;
+            font-size: 70px;
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 8px;
+            background: linear-gradient(90deg, #00ffff, #fff, #ff00ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 15px rgba(0,255,255,0.5));
+            animation: float 4s ease-in-out infinite;
+            text-align: center;
+            padding: 0 20px;
         }
 
-        @keyframes scanlineMove {
-            0% { background-position: 0 0; }
-            100% { background-position: 0 100%; }
+        .subtitle {
+            color: #888;
+            font-size: 14px;
+            letter-spacing: 4px;
+            margin-top: 10px;
+            margin-bottom: 50px;
+            text-transform: uppercase;
+            text-align: center;
         }
 
-        .hidden {
-            display: none !important;
-        }
+        .btn-group { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; width: 100%; max-width: 800px; }
+        .v-stack { display: flex; flex-direction: column; gap: 25px; align-items: center; min-width: 300px; }
         
-        /* Glitch text effect for Game Over */
-        .glitch {
+        /* Modern Buttons */
+        button {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: #fff;
+            padding: 18px 50px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
             position: relative;
-            animation: glitch-skew 1s infinite linear alternate-reverse;
-        }
-        .glitch::before{
-            content: attr(data-text);
-            position: absolute;
-            left: 0;
-            text-shadow: -2px 0 #ff00c1;
             overflow: hidden;
-            top: 0;
-            animation: glitch-anim-1 2s infinite linear alternate-reverse;
-        }
-        .glitch::after {
-            content: attr(data-text);
-            position: absolute;
-            left: 0;
-            text-shadow: -2px 0 #00fff9;
-            overflow: hidden;
-            top: 0;
-            animation: glitch-anim-2 3s infinite linear alternate-reverse;
+            backdrop-filter: blur(5px);
         }
 
-        @keyframes glitch-anim-1 {
-            0% { clip-path: inset(20% 0 80% 0); }
-            20% { clip-path: inset(60% 0 10% 0); }
-            40% { clip-path: inset(40% 0 50% 0); }
-            60% { clip-path: inset(80% 0 5% 0); }
-            80% { clip-path: inset(10% 0 60% 0); }
-            100% { clip-path: inset(30% 0 30% 0); }
-        }
-        @keyframes glitch-anim-2 {
-            0% { clip-path: inset(10% 0 60% 0); }
-            20% { clip-path: inset(80% 0 5% 0); }
-            40% { clip-path: inset(30% 0 20% 0); }
-            60% { clip-path: inset(10% 0 80% 0); }
-            80% { clip-path: inset(50% 0 30% 0); }
-            100% { clip-path: inset(70% 0 10% 0); }
+        button::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: 0.5s;
         }
 
+        button:hover::before { left: 100%; }
+        button:hover { transform: translateY(-3px); border-color: #fff; box-shadow: 0 5px 20px rgba(0,0,0,0.5); }
+
+        /* Difficulty Colors */
+        button.mode-easy:hover { border-color: #00ff00; box-shadow: 0 0 25px rgba(0,255,0,0.4); color: #00ff00; }
+        button.mode-normal:hover { border-color: #00ffff; box-shadow: 0 0 25px rgba(0,255,255,0.4); color: #00ffff; }
+        button.mode-hard:hover { border-color: #ffaa00; box-shadow: 0 0 25px rgba(255,170,0,0.4); color: #ffaa00; }
+        button.mode-hell { border-color: rgba(255,0,85,0.5); color: #ff0055; font-weight: 800; }
+        button.mode-hell:hover { background: #ff0055; color: #fff; box-shadow: 0 0 50px #ff0055; }
+
+        /* Checkbox Style */
+        .option-toggle {
+            margin-top: 30px;
+            display: flex;
+            align-items: center;
+            color: #aaa;
+            cursor: pointer;
+            font-size: 14px;
+            letter-spacing: 1px;
+        }
+        .option-toggle input { margin-right: 10px; accent-color: #00ffff; transform: scale(1.2); }
+
+        #message {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 120px;
+            font-style: italic;
+            font-weight: 900;
+            color: white;
+            display: none;
+            z-index: 15;
+            text-align: center;
+            pointer-events: none;
+            -webkit-text-stroke: 2px rgba(0,0,0,0.5);
+            text-shadow: 0 0 50px rgba(255,255,255,0.8);
+            width: 100%;
+        }
+        
+        @media (max-width: 800px) {
+            h1 { font-size: 40px; }
+            .subtitle { font-size: 10px; }
+            .hud-top { padding: 15px 20px; }
+            .score-box { font-size: 50px; width: 60px; }
+            .score-divider { font-size: 30px; }
+            .pause-btn-container { width: 60px; height: 60px; }
+            .pause-icon { width: 22px; height: 24px; }
+            button { padding: 20px 30px; font-size: 16px; width: 80%; max-width: 300px; margin-bottom: 10px; }
+            .btn-group { flex-direction: column; align-items: center; gap: 10px; }
+            #message { font-size: 80px; }
+        }
     </style>
+    <!-- Import Map -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
 </head>
 <body>
 
-    <!-- Game Canvas -->
-    <canvas id="gameCanvas"></canvas>
-
-    <!-- Visual Effects -->
-    <div class="scanlines"></div>
-    <div class="vignette"></div>
-
-    <!-- HUD -->
-    <div id="hud" class="hud hidden">
-        SCORE: <span id="scoreDisplay" class="score-val">0</span><br>
-        <span style="font-size: 14px; color: #888;">GAP SIZE: <span id="difficultyDisplay">100%</span></span>
-    </div>
-
-    <!-- Start Screen -->
-    <div id="startScreen" class="ui-layer">
-        <h1 class="text-6xl mb-4 font-black tracking-widest" style="color:#0ff; text-shadow: 0 0 20px #0ff;">CYBER THREAD</h1>
-        <p class="text-xl mb-8 tracking-wider text-gray-300">無限の電脳空間を突き進め</p>
-        <div class="text-sm mb-8 p-4 border border-cyan-500 bg-black bg-opacity-50 rounded">
-            <p class="mb-2">【操作方法】</p>
-            <p>🖱️ マウス / 👆 タップ: <span class="text-pink-500 font-bold">上昇</span></p>
-            <p>離す: <span class="text-cyan-500 font-bold">下降</span></p>
+    <!-- HUD Layer -->
+    <div id="ui-layer">
+        <div class="hud-top">
+            <div style="width: 50px;"></div>
+            <div class="score-container">
+                <div class="score-box p-score" id="score-player">0</div>
+                <div class="score-divider">-</div>
+                <div class="score-box e-score" id="score-enemy">0</div>
+            </div>
+            <div class="pause-btn-container" id="pause-btn" onclick="togglePause()">
+                <div class="pause-icon">
+                    <div class="pause-bar"></div>
+                    <div class="pause-bar"></div>
+                </div>
+            </div>
         </div>
-        <button id="startBtn" class="btn">SYSTEM START</button>
     </div>
 
-    <!-- Game Over Screen -->
-    <div id="gameOverScreen" class="ui-layer hidden">
-        <h2 class="text-6xl mb-4 font-black glitch" data-text="CRITICAL ERROR" style="color:#f0f;">CRITICAL ERROR</h2>
-        <p class="text-2xl mb-2">SYSTEM HALTED</p>
-        <p class="text-xl mb-8">FINAL SCORE: <span id="finalScore" class="text-4xl text-yellow-400 font-bold">0</span></p>
-        <button id="restartBtn" class="btn">REBOOT SYSTEM</button>
+    <!-- Pause Menu -->
+    <div id="pause-menu">
+        <div class="pause-title">PAUSED</div>
+        <div class="v-stack">
+            <button onclick="togglePause()">RESUME GAME</button>
+            <button onclick="quitGame()">EXIT TO TITLE</button>
+        </div>
     </div>
 
-<script>
-/**
- * CYBER THREAD GAME ENGINE
- * Audio-Visual implementation using HTML5 Canvas
- */
+    <!-- Goal Message -->
+    <div id="message">GOAL!</div>
 
-// --- Audio System (Simple Synth) ---
-const AudioSys = {
-    ctx: null,
-    init: function() {
-        window.AudioContext = window.AudioContext || window.webkitAudioContext;
-        this.ctx = new AudioContext();
-    },
-    playTone: function(freq, type, duration, vol) {
-        if (!this.ctx) return;
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-        osc.type = type;
-        osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+    <!-- Title Screen -->
+    <div id="menu-screen">
+        <h1>Neon Hockey</h1>
+        <div class="subtitle">CYBERNETIC SPORTS SIMULATION</div>
+        <div style="margin-bottom: 15px; color:#fff; letter-spacing: 2px; font-size:12px;">SELECT DIFFICULTY</div>
+        <div class="btn-group">
+            <button class="mode-easy" onclick="startGame('easy')">Beginner</button>
+            <button class="mode-normal" onclick="startGame('normal')">Normal</button>
+            <button class="mode-hard" onclick="startGame('hard')">Expert</button>
+            <button class="mode-hell" onclick="startGame('hell')">HELL MODE</button>
+        </div>
+        <label class="option-toggle">
+            <input type="checkbox" id="multi-puck-toggle"> 
+            ENABLE CHAOS MODE (2 PUCKS)
+        </label>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+        // --- Configuration ---
+        const CONFIG = {
+            tableWidth: 60,
+            tableHeight: 100,
+            goalWidth: 20,
+            puckRadius: 2.5,
+            paddleRadius: 3.5,
+            wallRestitution: 0.9,
+            paddleRestitution: 1.1,
+            friction: 0.990,
+            winScore: 7,
+            cornerCut: 8 // Size of the corner cut to prevent sticking
+        };
+
+        const AI_LEVELS = {
+            'easy':   { speed: 0.04, error: 2.5, reaction: 0.8 },
+            'normal': { speed: 0.09, error: 1.0, reaction: 0.5 },
+            'hard':   { speed: 0.18, error: 0.2, reaction: 0.2 },
+            'hell':   { speed: 0.40, error: 0.0, reaction: 0.0 }
+        };
+
+        let state = {
+            isPlaying: false,
+            isPaused: false,
+            scoreP: 0,
+            scoreE: 0,
+            difficulty: 'normal',
+            pucks: [],
+            cameraShake: 0,
+            baseCameraPos: new THREE.Vector3(0, 100, 100),
+            isMobile: false
+        };
+
+        // --- Audio ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         
-        gain.gain.setValueAtTime(vol, this.ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
+        function playSound(type) {
+            if (!state.isPlaying || state.isPaused) return;
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            const now = audioCtx.currentTime;
 
-        osc.connect(gain);
-        gain.connect(this.ctx.destination);
-        osc.start();
-        osc.stop(this.ctx.currentTime + duration);
-    },
-    playCrash: function() {
-        if (!this.ctx) return;
-        // White noise burst
-        const bufferSize = this.ctx.sampleRate * 0.5;
-        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-        const data = buffer.getChannelData(0);
-        for (let i = 0; i < bufferSize; i++) {
-            data[i] = Math.random() * 2 - 1;
+            if (type === 'hit') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(220, now);
+                osc.frequency.exponentialRampToValueAtTime(40, now + 0.1);
+                gain.gain.setValueAtTime(0.4, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                osc.start(now);
+                osc.stop(now + 0.1);
+            } else if (type === 'wall') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(880, now);
+                osc.frequency.exponentialRampToValueAtTime(100, now + 0.05);
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+                osc.start(now);
+                osc.stop(now + 0.05);
+            } else if (type === 'goal') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(150, now);
+                osc.frequency.exponentialRampToValueAtTime(10, now + 1.2);
+                gain.gain.setValueAtTime(0.8, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 1.2);
+                osc.start(now);
+                osc.stop(now + 1.2);
+            }
         }
-        const noise = this.ctx.createBufferSource();
-        noise.buffer = buffer;
-        const gain = this.ctx.createGain();
-        gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.5);
-        noise.connect(gain);
-        gain.connect(this.ctx.destination);
-        noise.start();
-        
-        // Low boom
-        this.playTone(100, 'sawtooth', 0.5, 0.5);
-        this.playTone(50, 'square', 0.8, 0.5);
-    },
-    playScore: function() {
-        this.playTone(800 + Math.random()*200, 'sine', 0.1, 0.05);
-    },
-    playStart: function() {
-        this.playTone(440, 'square', 0.2, 0.1);
-        setTimeout(() => this.playTone(880, 'square', 0.4, 0.1), 200);
-    }
-};
 
-// --- Game Logic ---
+        // --- Three.js Init ---
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x050505, 0.002);
 
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d', { alpha: false }); // Optimize for no transparency on base canvas
+        const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.lookAt(0, 0, 0);
 
-// UI Elements
-const startScreen = document.getElementById('startScreen');
-const gameOverScreen = document.getElementById('gameOverScreen');
-const hud = document.getElementById('hud');
-const scoreDisplay = document.getElementById('scoreDisplay');
-const difficultyDisplay = document.getElementById('difficultyDisplay');
-const finalScoreDisplay = document.getElementById('finalScore');
-const startBtn = document.getElementById('startBtn');
-const restartBtn = document.getElementById('restartBtn');
+        const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        document.body.appendChild(renderer.domElement);
 
-// Game State
-let gameState = 'START'; // START, PLAYING, GAMEOVER
-let score = 0;
-let frames = 0;
-let gameSpeed = 3;
-let animationId = null; // To manage game loop
-let width, height;
+        // Bloom Effect
+        const renderScene = new RenderPass(scene, camera);
+        const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+        bloomPass.threshold = 0.15;
+        bloomPass.strength = 1.6;
+        bloomPass.radius = 0.4;
 
-// Physics Constants
-const GRAVITY = 0.5; // Downward force
-const LIFT = -0.8;   // Upward force when holding
-const MAX_VELOCITY = 10;
+        const composer = new EffectComposer(renderer);
+        composer.addPass(renderScene);
+        composer.addPass(bloomPass);
 
-// Player (The Thread Head)
-const player = {
-    x: 100, // Fixed X position
-    y: 0,
-    radius: 4,
-    velocity: 0,
-    trail: [], // Array of {x, y}
-    trailLength: 40,
-    color: '#0ff'
-};
+        // --- Scene Construction ---
+        const ambientLight = new THREE.AmbientLight(0x444444);
+        scene.add(ambientLight);
 
-// Obstacles (Needles)
-let obstacles = [];
-const NEEDLE_BODY_WIDTH = 30; // The bulge width (narrowed from 40)
-const NEEDLE_SHAFT_WIDTH = 8; // Narrowed from 12
-const OBSTACLE_SPACING = 300; // Distance between walls
-let initialGapSize = 250;
-let minGapSize = 60; 
-let currentGapSize = initialGapSize;
+        // Grid Floor
+        const gridHelper = new THREE.GridHelper(400, 100, 0x555555, 0x1a1a1a);
+        gridHelper.position.y = -2;
+        scene.add(gridHelper);
 
-// Particles
-let particles = [];
+        const tableGroup = new THREE.Group();
+        scene.add(tableGroup);
 
-// Input
-let isHolding = false;
-
-// Initialization
-function resize() {
-    width = canvas.width = window.innerWidth;
-    height = canvas.height = window.innerHeight;
-    player.x = width * 0.2; // Player stays at 20% of screen width
-}
-
-window.addEventListener('resize', resize);
-resize();
-
-// Input Handlers
-function handleInputStart(e) {
-    // CRITICAL FIX: Allow buttons to be clicked!
-    // If we preventDefault on buttons, the click event never fires on mobile.
-    if (e.target.tagName === 'BUTTON' || e.target.closest('button')) {
-        return;
-    }
-
-    if (e.type === 'touchstart') e.preventDefault(); // Prevent scrolling
-    isHolding = true;
-}
-
-function handleInputEnd(e) {
-    // CRITICAL FIX: Also check button on touchend to prevent blocking click events
-    if (e.target.tagName === 'BUTTON' || e.target.closest('button')) {
-        return;
-    }
-    
-    if (e.type === 'touchend') e.preventDefault();
-    isHolding = false;
-}
-
-window.addEventListener('mousedown', handleInputStart);
-window.addEventListener('touchstart', handleInputStart, { passive: false });
-window.addEventListener('mouseup', handleInputEnd);
-window.addEventListener('touchend', handleInputEnd, { passive: false });
-
-// Game Loop Functions
-
-function resetGame() {
-    player.y = height / 2;
-    player.velocity = 0;
-    player.trail = [];
-    isHolding = false; // Reset holding state
-
-    // Pre-fill trail to avoid popping
-    for(let i=0; i<player.trailLength; i++) {
-        player.trail.push({x: player.x - i*5, y: player.y});
-    }
-    
-    obstacles = [];
-    particles = [];
-    score = 0;
-    gameSpeed = 2.8; // Reduced speed (was 4) ~30% slower
-    currentGapSize = initialGapSize;
-    frames = 0;
-    
-    // Create first obstacle far away
-    addObstacle(width + 200);
-}
-
-function startGame() {
-    AudioSys.init();
-    AudioSys.playStart();
-    
-    // Cancel any existing loop to prevent speed doubling bug
-    if (animationId) {
-        cancelAnimationFrame(animationId);
-    }
-    
-    gameState = 'PLAYING';
-    startScreen.classList.add('hidden');
-    gameOverScreen.classList.add('hidden');
-    hud.classList.remove('hidden');
-    resetGame();
-    animate();
-}
-
-function gameOver() {
-    if (gameState === 'GAMEOVER') return; // Prevent double trigger
-    
-    AudioSys.playCrash();
-    gameState = 'GAMEOVER';
-    finalScoreDisplay.textContent = Math.floor(score);
-    hud.classList.add('hidden');
-    gameOverScreen.classList.remove('hidden');
-    // Create explosion at player position
-    createExplosion(player.x, player.y, 50, '#f0f');
-}
-
-function addObstacle(xOffset) {
-    // Determine random gap position
-    // Keep gap within screen bounds with some padding
-    const padding = 100; // Keep needle tip on screen mostly
-    const maxGapTop = height - currentGapSize - 50; // Ensure bottom shaft exists
-    const minGapTop = padding;
-    const gapTop = Math.random() * (maxGapTop - minGapTop) + minGapTop;
-    
-    obstacles.push({
-        x: xOffset,
-        width: NEEDLE_BODY_WIDTH,
-        gapTop: gapTop,
-        gapHeight: currentGapSize,
-        passed: false,
-        tipHeight: 15 // REDUCED from 50: Make the tip much smaller/subtle
-    });
-}
-
-function createExplosion(x, y, count, color) {
-    for (let i = 0; i < count; i++) {
-        particles.push({
-            x: x,
-            y: y,
-            vx: (Math.random() - 0.5) * 15,
-            vy: (Math.random() - 0.5) * 15,
-            life: 1.0,
-            color: color
+        // Table Surface
+        const floorGeo = new THREE.PlaneGeometry(CONFIG.tableWidth + 4, CONFIG.tableHeight + 4);
+        const floorMat = new THREE.MeshStandardMaterial({ 
+            color: 0x0a0a0a, 
+            roughness: 0.1, 
+            metalness: 0.5 
         });
-    }
-}
+        const floorMesh = new THREE.Mesh(floorGeo, floorMat);
+        floorMesh.rotation.x = -Math.PI / 2;
+        floorMesh.position.y = -0.1;
+        tableGroup.add(floorMesh);
 
-function update() {
-    if (gameState !== 'PLAYING') return;
+        // Neon Materials
+        const neonMatBlue = new THREE.MeshStandardMaterial({ color: 0x00ffff, emissive: 0x00ffff, emissiveIntensity: 2.0 });
+        const neonMatRed = new THREE.MeshStandardMaterial({ color: 0xff0055, emissive: 0xff0055, emissiveIntensity: 2.0 });
+        const neonMatYellow = new THREE.MeshStandardMaterial({ color: 0xffff00, emissive: 0xffff00, emissiveIntensity: 1.5 });
+        const wallMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.2, metalness: 0.8 });
 
-    // Difficulty scaling
-    gameSpeed += 0.001; // Slowly increase speed
-    // Decrease gap size based on score, but clamp to min
-    currentGapSize = Math.max(minGapSize, initialGapSize - (score * 0.5));
-
-    // Player Physics
-    if (isHolding) {
-        player.velocity += LIFT;
-    } else {
-        player.velocity += GRAVITY;
-    }
-
-    // Dampening / Terminal Velocity
-    player.velocity *= 0.96; // Air resistance
-    if (player.velocity > MAX_VELOCITY) player.velocity = MAX_VELOCITY;
-    if (player.velocity < -MAX_VELOCITY) player.velocity = -MAX_VELOCITY;
-
-    player.y += player.velocity;
-
-    // Ceiling/Floor collision
-    if (player.y < 0 || player.y > height) {
-        gameOver();
-        return;
-    }
-
-    // Trail Logic
-    for (let t of player.trail) {
-        t.x -= gameSpeed;
-    }
-    player.trail.unshift({x: player.x, y: player.y});
-    if (player.trail.length > player.trailLength) {
-        player.trail.pop();
-    }
-
-    // Obstacle Logic
-    if (obstacles.length > 0) {
-        const lastObs = obstacles[obstacles.length - 1];
-        if (width - lastObs.x > OBSTACLE_SPACING) {
-            addObstacle(width);
+        function createWall(w, h, d, x, z, mat, isNeon = false) {
+            const geo = new THREE.BoxGeometry(w, h, d);
+            const mesh = new THREE.Mesh(geo, isNeon ? mat : wallMat);
+            mesh.position.set(x, h/2, z);
+            
+            if (!isNeon) {
+                const stripGeo = new THREE.BoxGeometry(w, 0.2, d);
+                const strip = new THREE.Mesh(stripGeo, mat);
+                strip.position.y = h/2 + 0.1;
+                mesh.add(strip);
+            }
+            
+            tableGroup.add(mesh);
+            return mesh;
         }
-    }
 
-    for (let i = obstacles.length - 1; i >= 0; i--) {
-        let obs = obstacles[i];
-        obs.x -= gameSpeed;
-
-        // Collision Detection
-        // Determine collision box for the "Needle" (Top Tip + Bulge + Bottom Shaft)
-        
-        // Check X range overlap
-        if (player.x + player.radius > obs.x && player.x - player.radius < obs.x + obs.width) {
+        // --- CORNER WALLS (Prevent Stuck) ---
+        function createCornerWalls() {
+            const size = CONFIG.cornerCut * 1.5; // Visual size length
+            const dist = (CONFIG.tableWidth/2 + CONFIG.tableHeight/2) - CONFIG.cornerCut; 
             
-            // 1. Check Safe Zone (The Hole)
-            const inHole = (player.y - player.radius > obs.gapTop) && 
-                           (player.y + player.radius < obs.gapTop + obs.gapHeight);
+            const thickness = 2;
+            const geo = new THREE.BoxGeometry(size, 2, thickness);
             
-            if (!inHole) {
-                // Not in hole, so check if we hit the needle structure
-                
-                // Bottom Structure: From (gapTop + gapHeight) downwards
-                const hitBottom = (player.y + player.radius > obs.gapTop + obs.gapHeight);
-                
-                // Top Structure (Tip): From (gapTop) upwards to (gapTop - tipHeight)
-                const hitTopTip = (player.y - player.radius < obs.gapTop) && 
-                                  (player.y + player.radius > obs.gapTop - obs.tipHeight);
+            // 4 Corners
+            const corners = [
+                { x: -CONFIG.tableWidth/2, z: -CONFIG.tableHeight/2, rot: Math.PI/4, mat: neonMatBlue }, // Top-Left
+                { x: CONFIG.tableWidth/2, z: -CONFIG.tableHeight/2, rot: -Math.PI/4, mat: neonMatBlue }, // Top-Right
+                { x: -CONFIG.tableWidth/2, z: CONFIG.tableHeight/2, rot: -Math.PI/4, mat: neonMatBlue }, // Bot-Left
+                { x: CONFIG.tableWidth/2, z: CONFIG.tableHeight/2, rot: Math.PI/4, mat: neonMatBlue }  // Bot-Right
+            ];
 
-                // If hit bottom or hit the tip, die.
-                // Note: If player is ABOVE the tip (y < gapTop - tipHeight), they are safe (flew over).
-                if (hitBottom || hitTopTip) {
-                    gameOver();
-                    return;
+            corners.forEach(c => {
+                // Offset calculation to place the 45deg wall correctly
+                // We want to cut the corner by CONFIG.cornerCut
+                // Shift inwards
+                const offsetX = (c.x > 0 ? -1 : 1) * (CONFIG.cornerCut/2);
+                const offsetZ = (c.z > 0 ? -1 : 1) * (CONFIG.cornerCut/2);
+                
+                const mesh = new THREE.Mesh(geo, c.mat);
+                mesh.rotation.y = c.rot;
+                // Simple positioning approx
+                mesh.position.set(c.x + offsetX, 1, c.z + offsetZ);
+                tableGroup.add(mesh);
+            });
+        }
+        createCornerWalls();
+
+        // Side Walls
+        createWall(2, 3, CONFIG.tableHeight - CONFIG.cornerCut*2, -CONFIG.tableWidth/2 - 1, 0, neonMatBlue); 
+        createWall(2, 3, CONFIG.tableHeight - CONFIG.cornerCut*2, CONFIG.tableWidth/2 + 1, 0, neonMatBlue); 
+
+        // End Walls (adjusted for corners)
+        const wallW = (CONFIG.tableWidth - CONFIG.goalWidth) / 2 - CONFIG.cornerCut;
+        // Top (Enemy)
+        createWall(wallW, 3, 2, -wallW/2 - CONFIG.goalWidth/2, -CONFIG.tableHeight/2 - 1, neonMatRed);
+        createWall(wallW, 3, 2, wallW/2 + CONFIG.goalWidth/2, -CONFIG.tableHeight/2 - 1, neonMatRed);
+        // Bottom (Player)
+        createWall(wallW, 3, 2, -wallW/2 - CONFIG.goalWidth/2, CONFIG.tableHeight/2 + 1, neonMatBlue);
+        createWall(wallW, 3, 2, wallW/2 + CONFIG.goalWidth/2, CONFIG.tableHeight/2 + 1, neonMatBlue);
+
+        // Center Line
+        const centerLine = new THREE.Mesh(new THREE.PlaneGeometry(CONFIG.tableWidth, 0.5), neonMatBlue);
+        centerLine.rotation.x = -Math.PI / 2;
+        centerLine.position.y = 0.01;
+        tableGroup.add(centerLine);
+
+        // Center Circle
+        const circleGeo = new THREE.RingGeometry(9, 10, 64);
+        const circleMesh = new THREE.Mesh(circleGeo, neonMatBlue);
+        circleMesh.rotation.x = -Math.PI / 2;
+        circleMesh.position.y = 0.01;
+        tableGroup.add(circleMesh);
+
+        // Game Entities
+        function createPaddle(color) {
+            const group = new THREE.Group();
+            const geo = new THREE.CylinderGeometry(CONFIG.paddleRadius, CONFIG.paddleRadius, 1.5, 32);
+            const mat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.2, metalness: 0.8 });
+            const mesh = new THREE.Mesh(geo, mat);
+            
+            // Neon Ring
+            const ringGeo = new THREE.TorusGeometry(CONFIG.paddleRadius, 0.3, 16, 32);
+            const ringMat = new THREE.MeshStandardMaterial({ color: color, emissive: color, emissiveIntensity: 2.0 });
+            const ring = new THREE.Mesh(ringGeo, ringMat);
+            ring.rotation.x = Math.PI / 2;
+            ring.position.y = 0.5;
+            
+            const light = new THREE.PointLight(color, 80, 25);
+            light.position.y = 2;
+            
+            group.add(mesh);
+            group.add(ring);
+            group.add(light);
+            scene.add(group);
+            
+            return { mesh: group, velocity: new THREE.Vector3(), targetPos: new THREE.Vector3() };
+        }
+
+        const playerPaddle = createPaddle(0x00ffff);
+        const enemyPaddle = createPaddle(0xff0055);
+
+        class Puck {
+            constructor() {
+                const geo = new THREE.CylinderGeometry(CONFIG.puckRadius, CONFIG.puckRadius, 1, 32);
+                this.mesh = new THREE.Mesh(geo, neonMatYellow);
+                const light = new THREE.PointLight(0xffff00, 50, 15);
+                light.position.y = 1;
+                this.mesh.add(light);
+                scene.add(this.mesh);
+                this.velocity = new THREE.Vector3(0, 0, 0);
+                this.reset();
+            }
+            reset() {
+                this.mesh.position.set(0, 0.5, 0);
+                const dir = Math.random() > 0.5 ? 1 : -1;
+                this.velocity.set((Math.random() - 0.5) * 1, 0, dir * 1);
+            }
+            remove() {
+                scene.remove(this.mesh);
+            }
+        }
+
+        // Particles
+        const particles = [];
+        function spawnParticles(pos, color) {
+            const geom = new THREE.BufferGeometry();
+            const count = 40;
+            const positions = new Float32Array(count * 3);
+            const velocities = [];
+            for(let i=0; i<count; i++) {
+                positions[i*3] = pos.x;
+                positions[i*3+1] = pos.y;
+                positions[i*3+2] = pos.z;
+                velocities.push({
+                    x: (Math.random() - 0.5) * 3,
+                    y: (Math.random()) * 3,
+                    z: (Math.random() - 0.5) * 3
+                });
+            }
+            geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            const mat = new THREE.PointsMaterial({
+                color: color, size: 0.5, transparent: true, opacity: 1, blending: THREE.AdditiveBlending
+            });
+            const sys = new THREE.Points(geom, mat);
+            scene.add(sys);
+            particles.push({ mesh: sys, vels: velocities, life: 1.0 });
+        }
+
+        function updateParticles() {
+            if (state.isPaused) return;
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.life -= 0.04;
+                const positions = p.mesh.geometry.attributes.position.array;
+                for(let j=0; j<p.vels.length; j++) {
+                    positions[j*3] += p.vels[j].x;
+                    positions[j*3+1] += p.vels[j].y;
+                    positions[j*3+2] += p.vels[j].z;
+                }
+                p.mesh.geometry.attributes.position.needsUpdate = true;
+                p.mesh.material.opacity = p.life;
+                if (p.life <= 0) {
+                    scene.remove(p.mesh);
+                    particles.splice(i, 1);
                 }
             }
         }
 
-        // Scoring (Passing the right edge of obstacle)
-        if (!obs.passed && player.x > obs.x + obs.width) {
-            obs.passed = true;
+        // --- Input ---
+        const mouse = new THREE.Vector2();
+        const raycaster = new THREE.Raycaster();
+        const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+
+        function updateMouse(x, y) {
+            mouse.x = (x / window.innerWidth) * 2 - 1;
+            mouse.y = -(y / window.innerHeight) * 2 + 1;
+        }
+
+        window.addEventListener('mousemove', e => updateMouse(e.clientX, e.clientY));
+        window.addEventListener('touchmove', e => {
+            e.preventDefault(); // Prevent scrolling/zooming default actions
+            if(e.touches.length > 0) updateMouse(e.touches[0].clientX, e.touches[0].clientY);
+        }, {passive: false});
+
+        // --- Logic ---
+        function checkCornerCollision(puck) {
+            // Corner Cut Collision Logic (45 deg walls)
+            const x = puck.mesh.position.x;
+            const z = puck.mesh.position.z;
+            const r = CONFIG.puckRadius;
+            const cut = CONFIG.cornerCut;
+            const W2 = CONFIG.tableWidth / 2;
+            const H2 = CONFIG.tableHeight / 2;
             
-            // 修正: 穴を通った場合のみスコア加算
-            // プレイヤーのY座標が穴の範囲内にあるかチェック
-            if (player.y > obs.gapTop && player.y < obs.gapTop + obs.gapHeight) {
-                score += 10;
-                // Small particle burst for success
-                createExplosion(obs.x + obs.width, player.y, 5, '#0ff');
-                AudioSys.playScore();
+            // Normal vectors for 4 corners (normalized)
+            const nInvSqrt2 = 0.7071; // 1/sqrt(2)
+
+            // 1. Bottom-Right (+x, +z)
+            // Line: x + z = (W2 + H2) - cut*sqrt(2) ? No, simpler approx:
+            // Check distance to the diagonal line connecting (W2-cut, H2) and (W2, H2-cut)
+            // Equation: x + z > Limit
+            // Limit approx: W2 + H2 - cut
+            if (x > 0 && z > 0) {
+                if (x + z > (W2 + H2 - cut) - r) {
+                    // Reflect velocity against (-1, -1)
+                    const dot = puck.velocity.x * -nInvSqrt2 + puck.velocity.z * -nInvSqrt2;
+                    puck.velocity.x -= 2 * dot * -nInvSqrt2;
+                    puck.velocity.z -= 2 * dot * -nInvSqrt2;
+                    // Push out
+                    const overlap = (x + z) - ((W2 + H2 - cut) - r);
+                    puck.mesh.position.x -= overlap * nInvSqrt2;
+                    puck.mesh.position.z -= overlap * nInvSqrt2;
+                    playSound('wall');
+                }
+            }
+            // 2. Bottom-Left (-x, +z)
+            else if (x < 0 && z > 0) {
+                 if (-x + z > (W2 + H2 - cut) - r) {
+                    const dot = puck.velocity.x * nInvSqrt2 + puck.velocity.z * -nInvSqrt2;
+                    puck.velocity.x -= 2 * dot * nInvSqrt2;
+                    puck.velocity.z -= 2 * dot * -nInvSqrt2;
+                    const overlap = (-x + z) - ((W2 + H2 - cut) - r);
+                    puck.mesh.position.x += overlap * nInvSqrt2;
+                    puck.mesh.position.z -= overlap * nInvSqrt2;
+                    playSound('wall');
+                 }
+            }
+            // 3. Top-Right (+x, -z)
+            else if (x > 0 && z < 0) {
+                 if (x - z > (W2 + H2 - cut) - r) {
+                    const dot = puck.velocity.x * -nInvSqrt2 + puck.velocity.z * nInvSqrt2;
+                    puck.velocity.x -= 2 * dot * -nInvSqrt2;
+                    puck.velocity.z -= 2 * dot * nInvSqrt2;
+                    const overlap = (x - z) - ((W2 + H2 - cut) - r);
+                    puck.mesh.position.x -= overlap * nInvSqrt2;
+                    puck.mesh.position.z += overlap * nInvSqrt2;
+                    playSound('wall');
+                 }
+            }
+            // 4. Top-Left (-x, -z)
+            else if (x < 0 && z < 0) {
+                 if (-x - z > (W2 + H2 - cut) - r) {
+                    const dot = puck.velocity.x * nInvSqrt2 + puck.velocity.z * nInvSqrt2;
+                    puck.velocity.x -= 2 * dot * nInvSqrt2;
+                    puck.velocity.z -= 2 * dot * nInvSqrt2;
+                    const overlap = (-x - z) - ((W2 + H2 - cut) - r);
+                    puck.mesh.position.x += overlap * nInvSqrt2;
+                    puck.mesh.position.z += overlap * nInvSqrt2;
+                    playSound('wall');
+                 }
             }
         }
 
-        // Remove off-screen obstacles
-        if (obs.x + obs.width < -100) {
-            obstacles.splice(i, 1);
+        function physicsUpdate() {
+            if (!state.isPlaying || state.isPaused) return;
+
+            // Player Paddle
+            raycaster.setFromCamera(mouse, camera);
+            const intersect = new THREE.Vector3();
+            raycaster.ray.intersectPlane(plane, intersect);
+            
+            const limitX = (CONFIG.tableWidth/2) - CONFIG.paddleRadius;
+            const limitZ_Top = 5; 
+            const limitZ_Bot = (CONFIG.tableHeight/2) - CONFIG.paddleRadius;
+
+            intersect.x = Math.max(-limitX, Math.min(limitX, intersect.x));
+            intersect.z = Math.max(limitZ_Top, Math.min(limitZ_Bot, intersect.z));
+
+            const prevPos = playerPaddle.mesh.position.clone();
+            
+            // Smoothing factor: Lower for mobile to prevent jitter
+            const smoothing = state.isMobile ? 0.15 : 0.25;
+            playerPaddle.mesh.position.lerp(intersect, smoothing);
+            
+            // Calculate velocity but Clamp it to prevent physics explosions
+            const currentVel = new THREE.Vector3().copy(playerPaddle.mesh.position).sub(prevPos);
+            
+            // Limit paddle velocity impact
+            const maxPaddleVel = 2.0; 
+            if (currentVel.length() > maxPaddleVel) {
+                currentVel.normalize().multiplyScalar(maxPaddleVel);
+            }
+            playerPaddle.velocity.copy(currentVel);
+
+            // AI Paddle
+            const ai = AI_LEVELS[state.difficulty];
+            let targetPuck = null;
+            let maxZ = -Infinity;
+            state.pucks.forEach(p => {
+                if (p.mesh.position.z > maxZ && p.mesh.position.z < 0) {
+                    maxZ = p.mesh.position.z;
+                    targetPuck = p;
+                }
+            });
+
+            let targetPos = new THREE.Vector3(0, 0, -40); 
+            if (targetPuck) {
+                let err = (Math.random()-0.5) * ai.error;
+                if(state.difficulty === 'hell') err = 0;
+                targetPos.set(targetPuck.mesh.position.x + err, 0, targetPuck.mesh.position.z);
+            }
+            targetPos.x = Math.max(-limitX, Math.min(limitX, targetPos.x));
+            targetPos.z = Math.max(-(CONFIG.tableHeight/2) + CONFIG.paddleRadius, Math.min(-15, targetPos.z)); 
+
+            const aiPrev = enemyPaddle.mesh.position.clone();
+            enemyPaddle.mesh.position.lerp(targetPos, ai.speed);
+            enemyPaddle.velocity.copy(enemyPaddle.mesh.position).sub(aiPrev);
+
+            // Pucks
+            state.pucks.forEach(puck => {
+                puck.velocity.multiplyScalar(CONFIG.friction);
+                // checkStuck(puck); // Removed old anti-stuck
+                checkCornerCollision(puck); // Added physical corner check
+
+                puck.mesh.position.add(puck.velocity);
+
+                const pRad = CONFIG.puckRadius;
+                const halfW = CONFIG.tableWidth/2;
+                const halfH = CONFIG.tableHeight/2;
+
+                // Side Walls
+                if (puck.mesh.position.x > halfW - pRad) {
+                    puck.mesh.position.x = halfW - pRad;
+                    puck.velocity.x *= -CONFIG.wallRestitution;
+                    playSound('wall');
+                    spawnParticles(puck.mesh.position, 0x0088ff);
+                }
+                else if (puck.mesh.position.x < -halfW + pRad) {
+                    puck.mesh.position.x = -halfW + pRad;
+                    puck.velocity.x *= -CONFIG.wallRestitution;
+                    playSound('wall');
+                    spawnParticles(puck.mesh.position, 0x0088ff);
+                }
+
+                const goalLimit = CONFIG.goalWidth / 2;
+                
+                // End Walls
+                if (puck.mesh.position.z > halfH - pRad) {
+                    if (Math.abs(puck.mesh.position.x) < goalLimit) {
+                        handleGoal('cpu', puck);
+                        return;
+                    } else {
+                        puck.mesh.position.z = halfH - pRad;
+                        puck.velocity.z *= -CONFIG.wallRestitution;
+                        playSound('wall');
+                    }
+                }
+                else if (puck.mesh.position.z < -halfH + pRad) {
+                    if (Math.abs(puck.mesh.position.x) < goalLimit) {
+                        handleGoal('player', puck);
+                        return;
+                    } else {
+                        puck.mesh.position.z = -halfH + pRad;
+                        puck.velocity.z *= -CONFIG.wallRestitution;
+                        playSound('wall');
+                    }
+                }
+
+                resolvePaddleCollision(playerPaddle, puck);
+                resolvePaddleCollision(enemyPaddle, puck);
+            });
         }
-    }
 
-    // Update Particles
-    for (let i = particles.length - 1; i >= 0; i--) {
-        let p = particles[i];
-        p.x += p.vx;
-        p.y += p.vy;
-        p.life -= 0.02;
-        if (p.life <= 0) particles.splice(i, 1);
-    }
-    
-    // Add time score
-    score += 0.05;
-    
-    // Update HUD
-    scoreDisplay.innerText = Math.floor(score);
-    let difficultyPercent = Math.max(0, Math.floor(((currentGapSize - minGapSize) / (initialGapSize - minGapSize)) * 100));
-    difficultyDisplay.innerText = `HOLE SIZE: ${difficultyPercent}%`;
-}
+        function resolvePaddleCollision(paddle, puck) {
+            const dist = paddle.mesh.position.distanceTo(puck.mesh.position);
+            const minDist = CONFIG.paddleRadius + CONFIG.puckRadius;
 
-function draw() {
-    // Clear Background
-    ctx.fillStyle = '#050505';
-    ctx.fillRect(0, 0, width, height);
+            if (dist < minDist) {
+                const angle = Math.atan2(puck.mesh.position.z - paddle.mesh.position.z, puck.mesh.position.x - paddle.mesh.position.x);
+                const overlap = minDist - dist;
 
-    // Draw Grid (Perspective Effect)
-    drawGrid();
+                puck.mesh.position.x += Math.cos(angle) * overlap;
+                puck.mesh.position.z += Math.sin(angle) * overlap;
 
-    // Draw Obstacles (Needles)
-    ctx.save();
-    
-    obstacles.forEach(obs => {
-        // Metallic Gradient for the needle
-        const grad = ctx.createLinearGradient(obs.x, 0, obs.x + obs.width, 0);
-        grad.addColorStop(0, '#555');
-        grad.addColorStop(0.3, '#bbb');
-        grad.addColorStop(0.5, '#fff'); // Shine
-        grad.addColorStop(0.7, '#bbb');
-        grad.addColorStop(1, '#555');
-        
-        ctx.fillStyle = grad;
-        
-        // Needle Geometry Calculation
-        const shaftWidth = NEEDLE_SHAFT_WIDTH;
-        const shaftX = obs.x + (obs.width - shaftWidth) / 2;
-        
-        const eyeTopY = obs.gapTop;
-        const eyeBottomY = obs.gapTop + obs.gapHeight;
-        
-        // Start Path
-        ctx.beginPath();
-        
-        // 1. Tip (Point)
-        const tipY = obs.gapTop - obs.tipHeight;
-        ctx.moveTo(obs.x + obs.width / 2, tipY); // The sharp point
-        
-        // 2. Curve down to Eye Top (Bulge)
-        // Right side curve
-        ctx.quadraticCurveTo(obs.x + obs.width, obs.gapTop - 10, obs.x + obs.width, obs.gapTop + 10);
-        
-        // 3. Right side of Eye/Shaft
-        // Go down to bottom of eye bulge
-        ctx.lineTo(obs.x + obs.width, eyeBottomY - 10);
-        // Curve in to shaft
-        ctx.quadraticCurveTo(obs.x + obs.width, eyeBottomY, shaftX + shaftWidth, eyeBottomY + 20);
-        
-        // 4. Bottom Shaft (Right side)
-        ctx.lineTo(shaftX + shaftWidth, height);
-        
-        // 5. Bottom Shaft (Left side)
-        ctx.lineTo(shaftX, height);
-        ctx.lineTo(shaftX, eyeBottomY + 20);
-        
-        // 6. Curve out to Left Eye Bulge
-        ctx.quadraticCurveTo(obs.x, eyeBottomY, obs.x, eyeBottomY - 10);
-        
-        // 7. Left side up to Tip
-        ctx.lineTo(obs.x, obs.gapTop + 10);
-        ctx.quadraticCurveTo(obs.x, obs.gapTop - 10, obs.x + obs.width / 2, tipY);
-        
-        ctx.closePath();
-        ctx.fill();
+                const nx = Math.cos(angle);
+                const nz = Math.sin(angle);
+                
+                const impactX = paddle.velocity.x * 2.5; 
+                const impactZ = paddle.velocity.z * 2.5;
 
-        // 8. The Hole (Cutout)
-        // Use destination-out to make transparent
-        ctx.globalCompositeOperation = 'destination-out';
-        ctx.beginPath();
-        // Ellipse hole
-        const holeWidth = obs.width * 0.6;
-        const holeHeight = obs.gapHeight * 0.8;
-        const holeX = obs.x + (obs.width - holeWidth) / 2;
-        const holeY = obs.gapTop + (obs.gapHeight - holeHeight) / 2;
-        
-        // Draw capsule shape for hole
-        ctx.roundRect(holeX, holeY, holeWidth, holeHeight, holeWidth/2);
-        ctx.fill();
-        
-        // Reset composite
-        ctx.globalCompositeOperation = 'source-over';
-
-        // 9. Neon Outline & Glow
-        ctx.save();
-        ctx.shadowBlur = 15;
-        ctx.shadowColor = '#0ff';
-        ctx.strokeStyle = '#0ff';
-        ctx.lineWidth = 2;
-        ctx.globalAlpha = 0.8;
-        
-        // Stroke the main needle shape
-        ctx.stroke(new Path2D(ctx)); // Re-stroke the last path (Needle body)? No, need to redraw path or store it.
-        // Let's just stroke the outline of the hole for effect
-        ctx.beginPath();
-        ctx.roundRect(holeX, holeY, holeWidth, holeHeight, holeWidth/2);
-        ctx.stroke();
-        
-        // Optional: Inner glow for the hole to make it look like "energy field" or just empty space
-        ctx.restore();
-
-    });
-    ctx.restore();
-
-    // Draw Thread (Player)
-    if (player.trail.length > 1) {
-        ctx.save();
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        
-        // Glow effect
-        ctx.shadowBlur = 20;
-        ctx.shadowColor = '#f0f'; // Pinkish/Purple laser
-        
-        // Draw the tail
-        ctx.beginPath();
-        ctx.moveTo(player.trail[0].x, player.trail[0].y);
-        
-        for (let i = 1; i < player.trail.length; i++) {
-            ctx.lineTo(player.trail[i].x, player.trail[i].y);
+                const vDotN = puck.velocity.x * nx + puck.velocity.z * nz;
+                
+                puck.velocity.x = (puck.velocity.x - 2 * vDotN * nx) * 0.8 + impactX;
+                puck.velocity.z = (puck.velocity.z - 2 * vDotN * nz) * 0.8 + impactZ;
+                
+                puck.velocity.multiplyScalar(CONFIG.paddleRestitution);
+                
+                const speed = puck.velocity.length();
+                // Speed Clamping (Min/Max)
+                // Mobile speed adjustment (30% slower: 3.5 * 0.7 = 2.45 -> approx 2.5)
+                const maxSpeed = state.isMobile ? 2.5 : 3.5;
+                if (speed > maxSpeed) puck.velocity.multiplyScalar(maxSpeed / speed);
+                
+                playSound('hit');
+                spawnParticles(puck.mesh.position, 0xffff00);
+            }
         }
+
+        function handleGoal(scorer, puck) {
+            playSound('goal');
+            state.cameraShake = 25;
+            spawnParticles(puck.mesh.position, scorer === 'player' ? 0x00ffff : 0xff0055);
+            
+            if (scorer === 'player') {
+                state.scoreP++;
+                showMessage("GOAL!");
+            } else {
+                state.scoreE++;
+                showMessage("SCORED!");
+            }
+            updateScoreUI();
+
+            puck.reset();
+            puck.velocity.set(0,0,0);
+            
+            if (state.scoreP >= CONFIG.winScore || state.scoreE >= CONFIG.winScore) {
+                endGame(scorer === 'player');
+            } else {
+                setTimeout(() => {
+                    if (state.isPlaying) {
+                        const dir = scorer === 'player' ? -1 : 1; 
+                        puck.velocity.set((Math.random()-0.5), 0, dir * 1.0);
+                    }
+                }, 1000);
+            }
+        }
+
+        function showMessage(text) {
+            const msg = document.getElementById('message');
+            msg.innerText = text;
+            msg.style.display = 'block';
+            msg.style.opacity = 1;
+            msg.style.transform = "translate(-50%, -50%) scale(1.5)";
+            
+            let op = 1;
+            let scale = 1.5;
+            const timer = setInterval(() => {
+                if(state.isPaused) return;
+                op -= 0.04;
+                scale -= 0.02;
+                msg.style.opacity = op;
+                msg.style.transform = `translate(-50%, -50%) scale(${scale})`;
+                
+                if (op <= 0) {
+                    clearInterval(timer);
+                    msg.style.display = 'none';
+                }
+            }, 50);
+        }
+
+        function updateScoreUI() {
+            document.getElementById('score-player').innerText = state.scoreP;
+            document.getElementById('score-enemy').innerText = state.scoreE;
+        }
+
+        function endGame(playerWon) {
+            state.isPlaying = false;
+            state.isPaused = false;
+            const menu = document.getElementById('menu-screen');
+            menu.style.display = 'flex';
+            document.querySelector('#menu-screen h1').innerText = playerWon ? "VICTORY" : "GAME OVER";
+            document.querySelector('#menu-screen h1').style.color = playerWon ? "#00ffff" : "#ff0055";
+            document.querySelector('#menu-screen .subtitle').innerText = playerWon ? "SYSTEM DOMINATED" : "TRY AGAIN";
+            
+            document.getElementById('pause-btn').style.opacity = '0';
+        }
+
+        window.startGame = (difficulty) => {
+            state.difficulty = difficulty;
+            state.scoreP = 0;
+            state.scoreE = 0;
+            state.isPlaying = true;
+            state.isPaused = false;
+            updateScoreUI();
+            
+            state.pucks.forEach(p => p.remove());
+            state.pucks = [];
+            state.pucks.push(new Puck());
+            
+            if (document.getElementById('multi-puck-toggle').checked) {
+                setTimeout(() => state.pucks.push(new Puck()), 1500);
+            }
+
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+
+            document.getElementById('menu-screen').style.display = 'none';
+            document.getElementById('pause-btn').style.opacity = '1';
+            
+            state.pucks[0].velocity.set(0, 0, 1);
+        };
+
+        window.togglePause = () => {
+            if (!state.isPlaying) return;
+            state.isPaused = !state.isPaused;
+            const menu = document.getElementById('pause-menu');
+            
+            if (state.isPaused) {
+                menu.style.display = 'flex';
+            } else {
+                menu.style.display = 'none';
+            }
+        };
+
+        window.quitGame = () => {
+            state.isPaused = false;
+            state.isPlaying = false;
+            document.getElementById('pause-menu').style.display = 'none';
+            document.getElementById('menu-screen').style.display = 'flex';
+            document.getElementById('pause-btn').style.opacity = '0';
+            
+            document.querySelector('#menu-screen h1').innerText = "Neon Hockey";
+            document.querySelector('#menu-screen h1').style.background = "linear-gradient(90deg, #00ffff, #fff, #ff00ff)";
+            document.querySelector('#menu-screen h1').style.webkitBackgroundClip = "text";
+            document.querySelector('#menu-screen h1').style.webkitTextFillColor = "transparent";
+            document.querySelector('#menu-screen .subtitle').innerText = "CYBERNETIC SPORTS SIMULATION";
+        };
+
+        // --- Camera & Responsive Logic ---
         
-        // Gradient stroke
-        const gradient = ctx.createLinearGradient(player.trail[player.trail.length-1].x, 0, player.x, 0);
-        gradient.addColorStop(0, 'rgba(255, 0, 255, 0)');
-        gradient.addColorStop(1, '#f0f');
+        function adjustCamera() {
+            const aspect = window.innerWidth / window.innerHeight;
+            camera.aspect = aspect;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            composer.setSize(window.innerWidth, window.innerHeight);
+
+            // Updated Camera Logic: Zoom in more to use full screen height
+            if (aspect < 1.0) {
+                // Portrait (Mobile) - Closer zoom, but high enough to see paddles
+                state.baseCameraPos.set(0, 180, 80); 
+                state.isMobile = true;
+            } else {
+                // Landscape (Desktop) - Zoomed in closer to use vertical space
+                state.baseCameraPos.set(0, 120, 85); 
+                state.isMobile = false;
+            }
+            camera.position.copy(state.baseCameraPos);
+            camera.lookAt(0, 0, 0);
+        }
+
+        window.addEventListener('resize', adjustCamera);
         
-        ctx.strokeStyle = gradient;
-        ctx.lineWidth = 3;
-        ctx.stroke();
-        
-        // Draw Head
-        ctx.fillStyle = '#fff';
-        ctx.beginPath();
-        ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
-        ctx.fill();
-        
-        ctx.restore();
-    }
+        // Initial Adjustment
+        adjustCamera();
 
-    // Draw Particles
-    particles.forEach(p => {
-        ctx.fillStyle = p.color;
-        ctx.globalAlpha = p.life;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, Math.random() * 3 + 1, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.globalAlpha = 1.0;
-    });
+        // --- Render Loop ---
+        function animate() {
+            requestAnimationFrame(animate);
 
-    // Draw Floor/Ceiling Danger Lines
-    ctx.fillStyle = '#f00';
-    ctx.fillRect(0, 0, width, 5);
-    ctx.fillRect(0, height-5, width, 5);
-}
+            physicsUpdate();
+            updateParticles();
 
-function drawGrid() {
-    ctx.save();
-    ctx.strokeStyle = 'rgba(0, 255, 255, 0.1)';
-    ctx.lineWidth = 1;
-    
-    const gridSize = 50;
-    const xOffset = (frames * gameSpeed) % gridSize;
+            // Camera Shake logic
+            if (state.cameraShake > 0 && !state.isPaused) {
+                const shakeX = (Math.random() - 0.5) * state.cameraShake * 0.1;
+                const shakeY = (Math.random() - 0.5) * state.cameraShake * 0.1;
+                
+                camera.position.x = state.baseCameraPos.x + shakeX;
+                camera.position.y = state.baseCameraPos.y + shakeY;
+                camera.position.z = state.baseCameraPos.z + shakeY;
+                
+                camera.lookAt(0,0,0);
+                
+                state.cameraShake *= 0.9;
+                if(state.cameraShake < 0.5) {
+                    state.cameraShake = 0;
+                    camera.position.copy(state.baseCameraPos);
+                    camera.lookAt(0,0,0);
+                }
+            }
 
-    // Vertical lines
-    for (let x = -xOffset; x < width; x += gridSize) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, height);
-        ctx.stroke();
-    }
+            composer.render();
+        }
 
-    // Horizontal lines
-    for (let y = 0; y < height; y += gridSize) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(width, y);
-        ctx.stroke();
-    }
-    
-    // Horizon glow
-    const gradient = ctx.createLinearGradient(0, height/2 - 100, 0, height/2 + 100);
-    gradient.addColorStop(0, 'rgba(0,0,0,0)');
-    gradient.addColorStop(0.5, 'rgba(0, 255, 255, 0.05)');
-    gradient.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, width, height);
+        document.getElementById('pause-btn').style.opacity = '0'; // Hide until start
+        animate();
 
-    ctx.restore();
-}
-
-function animate() {
-    frames++;
-    update();
-    draw();
-    if (gameState === 'PLAYING' || gameState === 'GAMEOVER' && particles.length > 0) {
-        animationId = requestAnimationFrame(animate);
-    }
-}
-
-// Button Events
-startBtn.addEventListener('click', startGame);
-restartBtn.addEventListener('click', startGame);
-
-// Initial Draw (Background)
-resize();
-drawGrid();
-
-</script>
+    </script>
 </body>
 </html>
