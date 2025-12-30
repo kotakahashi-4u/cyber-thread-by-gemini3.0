@@ -280,7 +280,8 @@ const restartBtn = document.getElementById('restartBtn');
 
 // Game State
 let gameState = 'START'; // START, PLAYING, GAMEOVER
-let passedCount = 0; // "Threads passed" counter
+let passedCount = 0; // "Threads passed successfully" (SCORE)
+let totalEncountered = 0; // Total obstacles encountered (DIFFICULTY)
 let frames = 0;
 const GAME_SPEED = 3.0; // Base Speed for 60FPS
 let animationId = null; 
@@ -308,8 +309,10 @@ let obstacles = [];
 const NEEDLE_BODY_WIDTH = 30; // The bulge width
 const NEEDLE_SHAFT_WIDTH = 8; // Narrowed
 const OBSTACLE_SPACING = 300; // Distance between walls
-let initialGapSize = 250;
-let minGapSize = 60; 
+
+// Difficulty Settings
+let initialGapSize = 150; // Set to 150px
+let minGapSize = 30;      // Set to 30px
 let currentGapSize = initialGapSize;
 
 // Particles
@@ -368,6 +371,7 @@ function resetGame() {
     obstacles = [];
     particles = [];
     passedCount = 0;
+    totalEncountered = 0;
     currentGapSize = initialGapSize;
     frames = 0;
     lastTime = 0; // Reset time for Delta Time
@@ -437,10 +441,10 @@ function update(timeScale) {
     if (gameState !== 'PLAYING') return;
 
     // --- Difficulty Scaling ---
-    // Decrease gap size by 1% of initial size every 5 threads passed
-    // Formula: Initial - (5% count) * (1% of Initial)
-    const reduction = Math.floor(passedCount / 5) * (initialGapSize * 0.01);
-    currentGapSize = Math.max(minGapSize, initialGapSize - reduction);
+    // Decrease gap size by 5% of INITIAL size every 10 threads ENCOUNTERED (not just passed successfully)
+    const reductionSteps = Math.floor(totalEncountered / 10);
+    const reductionAmount = reductionSteps * (initialGapSize * 0.05);
+    currentGapSize = Math.max(minGapSize, initialGapSize - reductionAmount);
 
     // --- Physics with Delta Time ---
     const gravityScaled = GRAVITY * timeScale;
@@ -511,10 +515,12 @@ function update(timeScale) {
             }
         }
 
-        // Scoring
+        // Scoring & Difficulty Counting
         if (!obs.passed && player.x > obs.x + obs.width) {
             obs.passed = true;
-            
+            totalEncountered++; // Increment difficulty counter regardless of success
+
+            // Score only if passed through the hole
             if (player.y > obs.gapTop && player.y < obs.gapTop + obs.gapHeight) {
                 passedCount++;
                 createExplosion(obs.x + obs.width, player.y, 5, '#0ff');
@@ -539,8 +545,9 @@ function update(timeScale) {
     
     // Update HUD
     scoreDisplay.innerText = passedCount;
-    let difficultyPercent = Math.max(0, Math.floor(((currentGapSize - minGapSize) / (initialGapSize - minGapSize)) * 100));
-    difficultyDisplay.innerText = `HOLE SIZE: ${difficultyPercent}%`;
+    // Show current size percentage relative to initial
+    let currentPercent = Math.max(0, Math.floor((currentGapSize / initialGapSize) * 100));
+    difficultyDisplay.innerText = `HOLE SIZE: ${currentPercent}%`;
 }
 
 function draw() {
