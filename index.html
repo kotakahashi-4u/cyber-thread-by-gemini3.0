@@ -280,7 +280,7 @@ const restartBtn = document.getElementById('restartBtn');
 
 // Game State
 let gameState = 'START'; // START, PLAYING, GAMEOVER
-let passedCount = 0; // "Threads passed successfully" (SCORE)
+let passedCount = 0; // "Threads passed" counter
 let totalEncountered = 0; // Total obstacles encountered (DIFFICULTY)
 let frames = 0;
 const GAME_SPEED = 3.0; // Base Speed for 60FPS
@@ -576,71 +576,81 @@ function draw() {
         const shaftWidth = NEEDLE_SHAFT_WIDTH;
         const shaftX = obs.x + (obs.width - shaftWidth) / 2;
         
-        const eyeTopY = obs.gapTop;
-        const eyeBottomY = obs.gapTop + obs.gapHeight;
+        // Fixed rim size (thickness of the metal around the hole)
+        const rimSize = 3; // Very thin rim for needle look
+        
+        // Bulge boundaries based on gap + rim
+        const bulgeTopY = obs.gapTop - rimSize;
+        const bulgeBottomY = obs.gapTop + obs.gapHeight + rimSize;
         
         // Start Path
         ctx.beginPath();
         
         // 1. Tip (Point)
+        // Tip starts relative to the bulge top to keep proportion
         const tipY = obs.gapTop - obs.tipHeight;
         ctx.moveTo(obs.x + obs.width / 2, tipY); // The sharp point
         
-        // 2. Curve down to Eye Top (Bulge)
-        // Right side curve
-        ctx.quadraticCurveTo(obs.x + obs.width, obs.gapTop - 10, obs.x + obs.width, obs.gapTop + 10);
+        // 2. Curve down to Bulge Top Right
+        // Control points fixed relative to bulge top
+        ctx.quadraticCurveTo(obs.x + obs.width, bulgeTopY, obs.x + obs.width, bulgeTopY + 10);
         
-        // 3. Right side of Eye/Shaft
-        // Go down to bottom of eye bulge
-        ctx.lineTo(obs.x + obs.width, eyeBottomY - 10);
-        // Curve in to shaft
-        ctx.quadraticCurveTo(obs.x + obs.width, eyeBottomY, shaftX + shaftWidth, eyeBottomY + 20);
+        // 3. Right side of Bulge (Straight down)
+        ctx.lineTo(obs.x + obs.width, bulgeBottomY - 10);
         
-        // 4. Bottom Shaft (Right side)
+        // 4. Curve in to Shaft (Bottom Right)
+        ctx.quadraticCurveTo(obs.x + obs.width, bulgeBottomY, shaftX + shaftWidth, bulgeBottomY + 20);
+        
+        // 5. Bottom Shaft (Right side)
         ctx.lineTo(shaftX + shaftWidth, height);
         
-        // 5. Bottom Shaft (Left side)
+        // 6. Bottom Shaft (Left side)
         ctx.lineTo(shaftX, height);
-        ctx.lineTo(shaftX, eyeBottomY + 20);
+        ctx.lineTo(shaftX, bulgeBottomY + 20);
         
-        // 6. Curve out to Left Eye Bulge
-        ctx.quadraticCurveTo(obs.x, eyeBottomY, obs.x, eyeBottomY - 10);
+        // 7. Curve out to Bulge (Bottom Left)
+        ctx.quadraticCurveTo(obs.x, bulgeBottomY, obs.x, bulgeBottomY - 10);
         
-        // 7. Left side up to Tip
-        ctx.lineTo(obs.x, obs.gapTop + 10);
-        ctx.quadraticCurveTo(obs.x, obs.gapTop - 10, obs.x + obs.width / 2, tipY);
+        // 8. Left side of Bulge (Straight up)
+        ctx.lineTo(obs.x, bulgeTopY + 10);
+        
+        // 9. Curve to Tip (Top Left)
+        ctx.quadraticCurveTo(obs.x, bulgeTopY, obs.x + obs.width / 2, tipY);
         
         ctx.closePath();
         ctx.fill();
 
-        // 8. The Hole (Cutout)
+        // 10. The Hole (Cutout)
         // Use destination-out to make transparent
         ctx.globalCompositeOperation = 'destination-out';
         ctx.beginPath();
-        // Ellipse hole
-        const holeWidth = obs.width * 0.6;
-        const holeHeight = obs.gapHeight * 0.8;
+        
+        // Hole dimensions match the actual game gap exactly
+        const holeWidth = obs.width * 0.55; // Slightly narrower than body
         const holeX = obs.x + (obs.width - holeWidth) / 2;
-        const holeY = obs.gapTop + (obs.gapHeight - holeHeight) / 2;
+        const holeY = obs.gapTop;
+        const holeHeight = obs.gapHeight;
         
         // Draw capsule shape for hole
-        ctx.roundRect(holeX, holeY, holeWidth, holeHeight, holeWidth/2);
+        // Use min of width/height for radius to ensure it's always a valid capsule
+        const radius = Math.min(holeWidth, holeHeight) / 2;
+        ctx.roundRect(holeX, holeY, holeWidth, holeHeight, radius);
         ctx.fill();
         
         // Reset composite
         ctx.globalCompositeOperation = 'source-over';
 
-        // 9. Neon Outline & Glow
+        // 11. Neon Outline & Glow
         ctx.save();
-        ctx.shadowBlur = 15;
+        ctx.shadowBlur = 10;
         ctx.shadowColor = '#0ff';
         ctx.strokeStyle = '#0ff';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 1.5;
         ctx.globalAlpha = 0.8;
         
-        // Let's just stroke the outline of the hole for effect
+        // Stroke the outline of the hole
         ctx.beginPath();
-        ctx.roundRect(holeX, holeY, holeWidth, holeHeight, holeWidth/2);
+        ctx.roundRect(holeX, holeY, holeWidth, holeHeight, radius);
         ctx.stroke();
         
         ctx.restore();
