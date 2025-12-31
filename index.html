@@ -309,6 +309,7 @@ let obstacles = [];
 const NEEDLE_BODY_WIDTH = 30; // The bulge width
 const NEEDLE_SHAFT_WIDTH = 8; // Narrowed
 const OBSTACLE_SPACING = 300; // Distance between walls
+const NEEDLE_BOTTOM_TIP_HEIGHT = 40; // Length of the sharp point at bottom
 
 // Difficulty Settings
 let initialGapSize = 120; // Set to 120px
@@ -420,7 +421,8 @@ function addObstacle(xOffset) {
         gapTop: gapTop,
         gapHeight: currentGapSize,
         passed: false,
-        tipHeight: 15
+        tipHeight: 15,
+        shaftLength: 400 // Finite length of the needle shaft below the hole
     });
 }
 
@@ -500,18 +502,26 @@ function update(timeScale) {
         // Collision Detection
         if (player.x + player.radius > obs.x && player.x - player.radius < obs.x + obs.width) {
             
+            // Definition of zones
+            const needleTopY = obs.gapTop - obs.tipHeight;
+            // Updated needle bottom Y to include the sharp tip
+            const needleBottomY = obs.gapTop + obs.gapHeight + obs.shaftLength + NEEDLE_BOTTOM_TIP_HEIGHT;
+
+            // Safe if:
+            // 1. In the hole
+            // 2. Above the tip
+            // 3. Below the bottom shaft (including its sharp tip)
+            
             const inHole = (player.y - player.radius > obs.gapTop) && 
                            (player.y + player.radius < obs.gapTop + obs.gapHeight);
             
-            if (!inHole) {
-                const hitBottom = (player.y + player.radius > obs.gapTop + obs.gapHeight);
-                const hitTopTip = (player.y - player.radius < obs.gapTop) && 
-                                  (player.y + player.radius > obs.gapTop - obs.tipHeight);
+            const aboveNeedle = (player.y + player.radius < needleTopY);
+            const belowNeedle = (player.y - player.radius > needleBottomY);
 
-                if (hitBottom || hitTopTip) {
-                    gameOver();
-                    return;
-                }
+            // If NOT safe, it's a hit
+            if (!inHole && !aboveNeedle && !belowNeedle) {
+                 gameOver();
+                 return;
             }
         }
 
@@ -583,35 +593,40 @@ function draw() {
         const bulgeTopY = obs.gapTop - rimSize;
         const bulgeBottomY = obs.gapTop + obs.gapHeight + rimSize;
         
+        // Needle Bottom Y (End of cylindrical shaft)
+        const needleShaftEndY = obs.gapTop + obs.gapHeight + obs.shaftLength;
+
         // Start Path
         ctx.beginPath();
         
-        // 1. Tip (Point)
-        // Tip starts relative to the bulge top to keep proportion
+        // 1. Tip (Point) - Top
         const tipY = obs.gapTop - obs.tipHeight;
-        ctx.moveTo(obs.x + obs.width / 2, tipY); // The sharp point
+        ctx.moveTo(obs.x + obs.width / 2, tipY); 
         
         // 2. Curve down to Bulge Top Right
-        // Control points fixed relative to bulge top
         ctx.quadraticCurveTo(obs.x + obs.width, bulgeTopY, obs.x + obs.width, bulgeTopY + 10);
         
-        // 3. Right side of Bulge (Straight down)
+        // 3. Right side of Bulge
         ctx.lineTo(obs.x + obs.width, bulgeBottomY - 10);
         
         // 4. Curve in to Shaft (Bottom Right)
         ctx.quadraticCurveTo(obs.x + obs.width, bulgeBottomY, shaftX + shaftWidth, bulgeBottomY + 20);
         
-        // 5. Bottom Shaft (Right side)
-        ctx.lineTo(shaftX + shaftWidth, height);
+        // 5. Bottom Shaft (Right side) - Draw to FINITE length
+        ctx.lineTo(shaftX + shaftWidth, needleShaftEndY);
+        
+        // --- Bottom Point (Sharp tip) ---
+        // Make the bottom sharp like a needle tip
+        ctx.lineTo(shaftX + shaftWidth / 2, needleShaftEndY + NEEDLE_BOTTOM_TIP_HEIGHT); 
+        ctx.lineTo(shaftX, needleShaftEndY);
         
         // 6. Bottom Shaft (Left side)
-        ctx.lineTo(shaftX, height);
         ctx.lineTo(shaftX, bulgeBottomY + 20);
         
         // 7. Curve out to Bulge (Bottom Left)
         ctx.quadraticCurveTo(obs.x, bulgeBottomY, obs.x, bulgeBottomY - 10);
         
-        // 8. Left side of Bulge (Straight up)
+        // 8. Left side of Bulge
         ctx.lineTo(obs.x, bulgeTopY + 10);
         
         // 9. Curve to Tip (Top Left)
@@ -632,7 +647,6 @@ function draw() {
         const holeHeight = obs.gapHeight;
         
         // Draw capsule shape for hole
-        // Use min of width/height for radius to ensure it's always a valid capsule
         const radius = Math.min(holeWidth, holeHeight) / 2;
         ctx.roundRect(holeX, holeY, holeWidth, holeHeight, radius);
         ctx.fill();
